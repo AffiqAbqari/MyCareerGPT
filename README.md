@@ -218,8 +218,6 @@ streamlit run src/app/app.py
 ```
 Open your browser at `http://localhost:8501`
 
----
-
 ### Step 7 — Run the Admin Panel (Optional)
 The admin panel shows feedback statistics, database status, and system metrics.
 
