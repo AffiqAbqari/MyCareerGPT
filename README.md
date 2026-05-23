@@ -220,6 +220,19 @@ Open your browser at `http://localhost:8501`
 
 ---
 
+### Step 7 — Run the Admin Panel (Optional)
+The admin panel shows feedback statistics, database status, and system metrics.
+
+Open a **separate** Anaconda PowerShell Prompt window and run:
+```bash
+streamlit run src/app/admin_panel.py --server.port 8502
+```
+Then open your browser at `http://localhost:8502`
+
+> **Note:** The main app (`app.py`) and admin panel can run at the same time in separate terminal windows.
+
+---
+
 ## 🔄 Every Day Workflow
 
 ```bash
@@ -234,6 +247,9 @@ cd path/to/MalaysiaCareerGPT
 
 # Run the app
 streamlit run src/app/app.py
+
+# Run admin panel (optional, in a separate terminal)
+streamlit run src/app/admin_panel.py --server.port 8502
 
 # Before stopping — shut down Docker
 docker compose down
