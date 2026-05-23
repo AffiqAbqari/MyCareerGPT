@@ -1020,20 +1020,15 @@ def show_recommendations_page():
             st.session_state.recommendations = recs
 
             try:
-                save_user(
+                # Capture the user_id returned directly from save_user
+                user_id = save_user(
                     profile.get("name"), profile.get("email"),
                     profile.get("education"), profile.get("field"),
                     profile.get("university"), profile.get("cgpa"),
                     profile.get("skills"), profile.get("experience"),
                     profile.get("riasec_type"),
                 )
-                from src.database import get_connection
-                conn   = get_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT id FROM users WHERE email = ?", (profile.get("email"),))
-                row     = cursor.fetchone()
-                user_id = row[0] if row else None
-                conn.close()
+                
                 if user_id:
                     save_recommendations(user_id, [
                         {
