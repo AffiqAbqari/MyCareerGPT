@@ -164,6 +164,15 @@ Enter your password when prompted.
 
 ---
 
+## 📊 Dataset
+This project uses the Jobstreet Malaysia Job Dataset hosted on Kaggle. You must download this dataset before setting up the database.
+
+🔗 Download Link: [Jobstreet All Job Dataset by Azrai Mohamad](https://www.kaggle.com/datasets/azraimohamad/jobstreet-all-job-dataset)
+
+Once downloaded, extract the ZIP file and place the jobstreet_all_job_dataset.csv file directly into the data/raw/ directory of this project.
+
+---
+
 ## 🚀 How to Run the Project
 
 ### Step 1 — Clone the Repository
