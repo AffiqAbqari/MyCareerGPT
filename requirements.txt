@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+scikit-learn
+python-dotenv
+google-genai
+reportlab
+pdfplumber
+python-docx
+psycopg2-binary
+requests
