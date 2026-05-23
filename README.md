@@ -164,6 +164,15 @@ Enter your password when prompted.
 
 ---
 
+## 📊 Dataset
+This project uses the Jobstreet Malaysia Job Dataset hosted on Kaggle. You must download this dataset before setting up the database.
+
+🔗 Download Link: [Jobstreet All Job Dataset by Azrai Mohamad](https://www.kaggle.com/datasets/azraimohamad/jobstreet-all-job-dataset)
+
+Once downloaded, extract the ZIP file and place the jobstreet_all_job_dataset.csv file directly into the data/raw/ directory of this project.
+
+---
+
 ## 🚀 How to Run the Project
 
 ### Step 1 — Clone the Repository
@@ -209,6 +218,17 @@ streamlit run src/app/app.py
 ```
 Open your browser at `http://localhost:8501`
 
+### Step 7 — Run the Admin Panel (Optional)
+The admin panel shows feedback statistics, database status, and system metrics.
+
+Open a **separate** Anaconda PowerShell Prompt window and run:
+```bash
+streamlit run src/app/admin_panel.py --server.port 8502
+```
+Then open your browser at `http://localhost:8502`
+
+> **Note:** The main app (`app.py`) and admin panel can run at the same time in separate terminal windows.
+
 ---
 
 ## 🔄 Every Day Workflow
@@ -225,6 +245,9 @@ cd path/to/MalaysiaCareerGPT
 
 # Run the app
 streamlit run src/app/app.py
+
+# Run admin panel (optional, in a separate terminal)
+streamlit run src/app/admin_panel.py --server.port 8502
 
 # Before stopping — shut down Docker
 docker compose down
@@ -250,4 +273,4 @@ OPENGAUSS_PASSWORD=your_strong_password_here
 
 ## 👤 Author
 
-Muhammad Affiq Abqari — FYP02-DS-T2610-0382 | Multimedia University (MMU)
+Muhammad Affiq Abqari bin Syafiq Jasrin — FYP02-DS-T2610-0382 | Multimedia University (MMU)
