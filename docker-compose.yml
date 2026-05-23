@@ -1,0 +1,17 @@
+services:
+
+  # ── OpenGauss Database ──────────────────────────────────────────────────────
+  opengauss:
+    image: enmotech/opengauss:3.0.0
+    container_name: mycareergpt-db
+    environment:
+      GS_PASSWORD: Abq@ri14
+    ports:
+      - "5432:5432"
+    volumes:
+      - opengauss_data:/var/lib/opengauss/data
+    privileged: true
+    restart: unless-stopped
+
+volumes:
+  opengauss_data:

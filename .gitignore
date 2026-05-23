@@ -1,0 +1,27 @@
+# Environment variables (contains API keys — never upload this)
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Data files (too large for GitHub)
+data/raw/
+data/malaysia_careers.db
+
+# Trained model files (large binary files)
+data/processed/*.pkl
+
+# Streamlit cache
+.streamlit/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
