@@ -250,4 +250,4 @@ OPENGAUSS_PASSWORD=your_strong_password_here
 
 ## 👤 Author
 
-Muhammad Affiq Abqari — FYP02-DS-T2610-0382 | Multimedia University (MMU)
+Muhammad Affiq Abqari bin Syafiq Jasrin — FYP02-DS-T2610-0382 | Multimedia University (MMU)
