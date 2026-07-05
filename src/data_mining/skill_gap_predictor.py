@@ -32,15 +32,11 @@ class SkillGapPredictor:
     """
 
     def __init__(self):
-        # Structure: { "Data Analyst": Counter({"Python": 45, "SQL": 42, ...}) }
         self.skill_patterns: dict = {}
-        # Structure: { "Data Analyst": {"Python": 0.90, "SQL": 0.84, ...} }
         self.skill_frequencies: dict = {}
-        # Total CVs per job type
         self.job_cv_counts: dict = {}
         self.is_trained = False
 
-    # ── Training ──────────────────────────────────────────────────────────────
 
     def learn_from_cvs(self, cv_dataset_path: str) -> "SkillGapPredictor":
         """
@@ -68,7 +64,6 @@ class SkillGapPredictor:
             job_cvs = cvs[cvs["actual_job_obtained"] == job_type]
             total   = len(job_cvs)
 
-            # Collect all skills from people who got this job
             all_skills = []
             for skills_str in job_cvs["skills"]:
                 skill_list = [s.strip().lower()
@@ -79,7 +74,6 @@ class SkillGapPredictor:
             self.skill_patterns[job_type]    = skill_freq
             self.job_cv_counts[job_type]     = total
 
-            # Convert to percentage frequency
             self.skill_frequencies[job_type] = {
                 skill: count / total
                 for skill, count in skill_freq.items()
@@ -87,7 +81,6 @@ class SkillGapPredictor:
 
         self.is_trained = True
 
-        # Save model
         os.makedirs(os.path.dirname(SKILL_GAP_MODEL_PATH), exist_ok=True)
         with open(SKILL_GAP_MODEL_PATH, "wb") as f:
             pickle.dump({
@@ -104,7 +97,6 @@ class SkillGapPredictor:
 
         return self
 
-    # ── Prediction ────────────────────────────────────────────────────────────
 
     def predict_skill_gap(self, user_skills_str: str,
                           target_job: str,
@@ -129,7 +121,6 @@ class SkillGapPredictor:
         if not self.is_trained:
             self._load()
 
-        # Fuzzy match job title
         matched_job = self._match_job_title(target_job)
         if not matched_job:
             return {
@@ -168,7 +159,6 @@ class SkillGapPredictor:
                     "pct": f"{freq*100:.0f}% of placed candidates had this",
                 })
 
-        # Match score: % of critical skills user already has
         critical_skills = {s for s, f in freq_map.items() if f >= threshold}
         user_critical   = user_skills & critical_skills
         match_score     = (len(user_critical) / len(critical_skills) * 100
@@ -201,11 +191,9 @@ class SkillGapPredictor:
     def _match_job_title(self, title: str) -> str:
         """Fuzzy match job title against known job types."""
         title_lower = title.lower()
-        # Exact match first
         for job in self.skill_patterns:
             if job.lower() == title_lower:
                 return job
-        # Partial match
         for job in self.skill_patterns:
             if title_lower in job.lower() or job.lower() in title_lower:
                 return job
@@ -227,7 +215,6 @@ class SkillGapPredictor:
               f"({len(self.skill_patterns)} job types)")
 
 
-# ── CLI Test ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     predictor = SkillGapPredictor()
