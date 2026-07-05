@@ -15,8 +15,6 @@ from typing import List, Dict
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 
-# ── Core Metrics ──────────────────────────────────────────────────────────────
-
 def precision_at_k(recommendations: List[int], ground_truth: List[int], k: int = 5) -> float:
     """
     Calculate Precision@K.
@@ -48,11 +46,10 @@ def ndcg_at_k(recommendations: List[int], ground_truth: List[int], k: int = 10) 
         score = 0.0
         for i, job in enumerate(ranked[:k]):
             if job in relevant:
-                score += 1.0 / np.log2(i + 2)  # +2 because log2(1)=0
+                score += 1.0 / np.log2(i + 2) 
         return score
 
     actual_dcg  = dcg(recommendations, ground_truth, k)
-    # Ideal: all relevant items at top
     ideal_ranked = [j for j in recommendations if j in ground_truth][:k]
     ideal_dcg   = dcg(ideal_ranked, ground_truth, k)
 
@@ -69,8 +66,6 @@ def f1_score_at_k(recommendations: List[int], ground_truth: List[int], k: int = 
         return 0.0
     return 2 * precision * recall / (precision + recall)
 
-
-# ── Ablation Study ────────────────────────────────────────────────────────────
 
 class AblationStudy:
     """
@@ -147,7 +142,6 @@ class AblationStudy:
             },
         }
 
-        # Calculate improvement
         tfidf_prec = self.results["tfidf_only"][f"precision@{k}"]
         full_prec  = self.results["full_system"][f"precision@{k}"]
         improvement = ((full_prec - tfidf_prec) / tfidf_prec * 100
@@ -189,8 +183,6 @@ def _get_target(metric: str) -> float:
     return targets.get(metric, 0.0)
 
 
-# ── Ground Truth Collection Guide ─────────────────────────────────────────────
-
 def generate_expert_labelling_sheet(test_users: List[Dict],
                                     candidate_jobs: Dict[int, pd.DataFrame],
                                     output_path: str = "data/expert_labels_template.csv"):
@@ -208,7 +200,7 @@ def generate_expert_labelling_sheet(test_users: List[Dict],
         uid = user["id"]
         if uid not in candidate_jobs:
             continue
-        jobs = candidate_jobs[uid].head(20)  # Top 20 candidates per user
+        jobs = candidate_jobs[uid].head(20)  
         for _, job in jobs.iterrows():
             rows.append({
                 "user_id":        uid,
@@ -217,9 +209,9 @@ def generate_expert_labelling_sheet(test_users: List[Dict],
                 "job_id":         job["id"],
                 "job_title":      job["title"],
                 "job_skills":     job.get("skills_required", ""),
-                "expert1_label":  "",  # Expert 1 fills this
-                "expert2_label":  "",  # Expert 2 fills this
-                "expert3_label":  "",  # Expert 3 fills this
+                "expert1_label":  "",  
+                "expert2_label":  "", 
+                "expert3_label":  "", 
             })
 
     df = pd.DataFrame(rows)
@@ -239,16 +231,14 @@ def calculate_fleiss_kappa(labels_df: pd.DataFrame) -> float:
         labels_df: DataFrame with columns expert1_label, expert2_label, expert3_label
                    Values: 1 (relevant) or 0 (not relevant)
     """
-    # Convert to numeric
     for col in ["expert1_label", "expert2_label", "expert3_label"]:
         labels_df[col] = pd.to_numeric(labels_df[col], errors="coerce")
 
     labels_df = labels_df.dropna(subset=["expert1_label", "expert2_label", "expert3_label"])
     n = len(labels_df)
     k_raters = 3
-    k_categories = 2  # 0 or 1
+    k_categories = 2 
 
-    # Count agreements
     P_i = []
     for _, row in labels_df.iterrows():
         labels = [row["expert1_label"], row["expert2_label"], row["expert3_label"]]
@@ -257,7 +247,6 @@ def calculate_fleiss_kappa(labels_df: pd.DataFrame) -> float:
 
     P_bar = np.mean(P_i)
 
-    # Expected agreement
     p_j = []
     all_labels = (labels_df[["expert1_label", "expert2_label", "expert3_label"]]
                   .values.flatten())
@@ -271,7 +260,7 @@ def calculate_fleiss_kappa(labels_df: pd.DataFrame) -> float:
     return kappa
 
 
-# ── Quick Demo ────────────────────────────────────────────────────────────────
+#  Quick Demo
 
 if __name__ == "__main__":
     print("📊 Evaluator loaded. Functions available:")
