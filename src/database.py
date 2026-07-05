@@ -20,10 +20,8 @@ import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Load .env BEFORE reading environment variables
 load_dotenv()
 
-# ── Backend Selection ──────────────────────────────────────────────────────────
 OPENGAUSS_HOST     = os.environ.get("OPENGAUSS_HOST",     "localhost")
 OPENGAUSS_PORT     = os.environ.get("OPENGAUSS_PORT",     "5432")
 OPENGAUSS_DB       = os.environ.get("OPENGAUSS_DB",       "malaysia_careers")
@@ -377,7 +375,6 @@ def save_user(name, email, education, field, university, cgpa,
     ph     = _ph(conn)
 
     if _is_opengauss(conn):
-        # OpenGauss — check first then insert or update
         cursor.execute(f"SELECT id FROM users WHERE email = {ph}", (email,))
         existing = cursor.fetchone()
         if existing:
@@ -401,7 +398,6 @@ def save_user(name, email, education, field, university, cgpa,
             )
             user_id = cursor.fetchone()[0]
     else:
-        # SQLite uses ON CONFLICT(column)
         cursor.execute(
             f"""INSERT INTO users (name, email, education, field_of_study,
                 university, cgpa, skills, experience_years, riasec_type)
