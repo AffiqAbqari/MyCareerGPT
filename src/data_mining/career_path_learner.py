@@ -1,9 +1,5 @@
 """
 career_path_learner.py - Random Forest Career Path Predictor
-MyCareerGPT | CV Integration
-
-Trains a Random Forest classifier on CV features to predict
-which job a candidate is most likely to get.
 
 Usage:
     from src.data_mining.career_path_learner import CareerPathPredictor
@@ -56,7 +52,6 @@ class CareerPathPredictor:
         self.cv_accuracy      = None
         self.classes_         = []
 
-    # ── Training ──────────────────────────────────────────────────────────────
 
     def train(self, cv_dataset_path: str) -> "CareerPathPredictor":
         """
@@ -73,7 +68,6 @@ class CareerPathPredictor:
         print(f"🌲 Training Random Forest on: {cv_dataset_path}")
         cvs = pd.read_csv(cv_dataset_path)
 
-        # Build all_skills vocabulary from training data
         all_skills_flat = []
         for s in cvs["skills"]:
             all_skills_flat.extend(
@@ -81,34 +75,27 @@ class CareerPathPredictor:
             )
         from collections import Counter
         skill_counts = Counter(all_skills_flat)
-        # Only use skills that appear in at least 5 CVs (avoid noise)
         self.all_skills_vocab = [s for s, c in skill_counts.items() if c >= 5]
 
-        # Build feature matrix
         X = self._extract_features(cvs)
         self.feature_columns = list(X.columns)
 
-        # Encode target labels
         y_raw = cvs["actual_job_obtained"].fillna("Unknown")
         y     = self.label_encoder.fit_transform(y_raw)
         self.classes_ = list(self.label_encoder.classes_)
 
-        # Train/test split
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
 
-        # Fit model
         self.model.fit(X_train, y_train)
         self.is_trained = True
 
-        # Evaluate
         train_pred = self.model.predict(X_train)
         test_pred  = self.model.predict(X_test)
         self.train_accuracy = accuracy_score(y_train, train_pred)
         test_accuracy       = accuracy_score(y_test, test_pred)
 
-        # 5-fold cross-validation
         cv_scores = cross_val_score(self.model, X, y, cv=5, scoring="accuracy")
         self.cv_accuracy = cv_scores.mean()
 
@@ -118,7 +105,6 @@ class CareerPathPredictor:
         print(f"   ✅ Classes         : {len(self.classes_)} job types")
         print(f"   ✅ Features        : {len(self.feature_columns)}")
 
-        # Feature importance (top 10)
         importances = self.model.feature_importances_
         feat_imp    = sorted(zip(self.feature_columns, importances),
                              key=lambda x: x[1], reverse=True)
@@ -127,7 +113,6 @@ class CareerPathPredictor:
             bar = "█" * int(imp * 100)
             print(f"     {feat:30s} {imp:.3f} {bar}")
 
-        # Classification report
         print(f"\n   📊 Per-class performance:")
         report = classification_report(
             y_test, test_pred,
@@ -136,11 +121,9 @@ class CareerPathPredictor:
         )
         print(report)
 
-        # Save
         self._save()
         return self
 
-    # ── Prediction ────────────────────────────────────────────────────────────
 
     def predict_career_path(self, user_profile: dict) -> dict:
         """
@@ -170,19 +153,16 @@ class CareerPathPredictor:
 
         X = self._extract_features(row)
 
-        # Align columns with training (add missing, drop extra)
         for col in self.feature_columns:
             if col not in X.columns:
                 X[col] = 0
         X = X.reindex(columns=self.feature_columns, fill_value=0)
 
-        # Predict with probability
         proba         = self.model.predict_proba(X)[0]
         predicted_idx = np.argmax(proba)
         predicted_job = self.classes_[predicted_idx]
         confidence    = proba[predicted_idx]
 
-        # Top 3 predictions
         top3_idx = np.argsort(proba)[::-1][:3]
         top3 = [
             {
@@ -258,23 +238,19 @@ class CareerPathPredictor:
 
         return results
 
-    # ── Feature Engineering ───────────────────────────────────────────────────
 
     def _extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Convert user/CV profiles to numeric feature matrix."""
         features = pd.DataFrame()
 
-        # CGPA
         features["cgpa"] = pd.to_numeric(
             df.get("cgpa", pd.Series([3.0] * len(df))), errors="coerce"
         ).fillna(3.0)
 
-        # Experience years
         features["experience_years"] = pd.to_numeric(
             df.get("experience_years", pd.Series([0] * len(df))), errors="coerce"
         ).fillna(0)
 
-        # Education level (ordinal encoding)
         edu_map = {
             "spm": 1, "foundation": 2, "diploma": 3,
             "bachelor's degree": 4, "bachelor": 4,
@@ -285,7 +261,6 @@ class CareerPathPredictor:
             lambda x: next((v for k, v in edu_map.items() if k in str(x)), 4)
         )
 
-        # Field of study (one-hot)
         fields = [
             "computer science", "data science", "software engineering",
             "information technology", "business", "finance",
@@ -297,7 +272,6 @@ class CareerPathPredictor:
                 field_col.str.lower().str.contains(field, na=False).astype(int)
             )
 
-        # Skills (binary presence) using vocabulary from training
         skills_col = df.get("skills", pd.Series([""] * len(df)))
         vocab = self.all_skills_vocab if self.all_skills_vocab else [
             "python", "sql", "java", "javascript", "machine learning",
@@ -314,7 +288,6 @@ class CareerPathPredictor:
 
         return features
 
-    # ── Persistence ───────────────────────────────────────────────────────────
 
     def _save(self):
         os.makedirs(os.path.dirname(CAREER_MODEL_PATH), exist_ok=True)
@@ -351,7 +324,6 @@ class CareerPathPredictor:
               f"CV accuracy={self.cv_accuracy:.1%})")
 
 
-# ── CLI Entry Point ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     print("=" * 60)
