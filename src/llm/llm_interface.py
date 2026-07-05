@@ -26,7 +26,7 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
-# ── Configuration ──────────────────────────────────────────────────────────────
+# Configuration
 MODEL_NAME = "gemini-2.5-flash"
 API_KEY    = os.environ.get("GOOGLE_API_KEY", "")
 
@@ -60,7 +60,6 @@ class LLMInterface:
             print(f"⚠️  Gemini init failed: {e}")
             self._client = None
 
-    # ── Public API ─────────────────────────────────────────────────────────────
     def generate_recommendations(
         self,
         prompt: str,
@@ -112,7 +111,6 @@ class LLMInterface:
             print(f"❌ Gemini API error: {e}")
             return {"raw_text": "", "recommendations": [], "error": str(e)}
 
-    # ── Parsing ────────────────────────────────────────────────────────────────
     def _parse_recommendations(self, raw_text: str) -> list:
         """Parse structured LLM output into recommendation dicts."""
         recommendations = []
@@ -184,12 +182,10 @@ class LLMInterface:
         }
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 def _confidence_to_score(confidence: str) -> float:
     return {"high": 0.9, "medium": 0.6, "low": 0.3}.get(confidence.lower(), 0.5)
 
 
-# ── Improved Hallucination Checker ────────────────────────────────────────────
 def check_hallucinations(recommendations: list, candidates: list) -> dict:
     """
     Verify LLM recommendations are grounded in retrieved context.
@@ -205,7 +201,6 @@ def check_hallucinations(recommendations: list, candidates: list) -> dict:
         raw_title   = rec.get("job_title", "").lower().strip()
         raw_company = rec.get("company",   "").lower().strip()
 
-        # Strip "at CompanyName" suffix Gemini sometimes adds to titles
         clean_title = re.sub(r'\s+at\s+.+$', '', raw_title).strip()
 
         title_matched = any(
@@ -247,8 +242,6 @@ def _token_overlap(a: str, b: str) -> float:
         return 0.0
     return len(tokens_a & tokens_b) / len(tokens_a | tokens_b)
 
-
-# ── Quick test ─────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     llm = LLMInterface()
     test_prompt = (
