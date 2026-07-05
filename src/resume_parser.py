@@ -17,42 +17,30 @@ import re
 import io
 
 
-# ── Known vocabularies for extraction ─────────────────────────────────────────
-
 KNOWN_SKILLS = [
-    # Programming languages
     "Python", "R", "Java", "JavaScript", "TypeScript", "C++", "C#", "C",
     "PHP", "Swift", "Kotlin", "Go", "Rust", "MATLAB", "Scala", "Ruby",
-    # Data & ML
     "Machine Learning", "Deep Learning", "NLP", "Natural Language Processing",
     "Computer Vision", "Data Analysis", "Data Science", "Data Mining",
     "Statistics", "Statistical Analysis", "Data Visualization",
     "Feature Engineering", "Model Deployment", "MLOps",
-    # ML Libraries
     "TensorFlow", "PyTorch", "Scikit-learn", "Keras", "XGBoost",
     "Pandas", "NumPy", "Matplotlib", "Seaborn", "Plotly",
     "NLTK", "SpaCy", "Hugging Face", "OpenCV",
-    # Databases
     "SQL", "MySQL", "PostgreSQL", "SQLite", "MongoDB", "Redis",
     "Oracle", "MS SQL", "NoSQL", "Firebase",
-    # BI & Reporting
     "Tableau", "Power BI", "Excel", "Google Sheets", "Looker",
     "SPSS", "SAS",
-    # Web
     "HTML", "CSS", "React", "Vue", "Angular", "Node.js",
     "Django", "Flask", "FastAPI", "Laravel", "Spring Boot",
-    # DevOps & Cloud
     "Docker", "Kubernetes", "AWS", "Azure", "GCP", "Git", "GitHub",
     "CI/CD", "Jenkins", "Terraform", "Linux", "Bash",
-    # Project & Soft
     "Project Management", "Agile", "Scrum", "JIRA", "Confluence",
     "Leadership", "Communication", "Teamwork", "Problem Solving",
     "Critical Thinking", "Presentation", "Time Management",
     "Negotiation", "Customer Service",
-    # Finance
     "Financial Modeling", "Accounting", "Bloomberg", "VBA",
     "Financial Analysis", "Risk Management",
-    # Networking
     "Networking", "Cisco", "TCP/IP", "Cybersecurity", "Firewall",
 ]
 
@@ -105,8 +93,6 @@ MALAYSIAN_UNIVERSITIES = {
 }
 
 
-# ── Main parser ───────────────────────────────────────────────────────────────
-
 def parse_resume(file_bytes: bytes, filename: str) -> dict:
     """
     Parse a resume file and extract structured information.
@@ -129,7 +115,6 @@ def parse_resume(file_bytes: bytes, filename: str) -> dict:
     """
     ext = filename.lower().split(".")[-1]
 
-    # Extract raw text
     raw_text = ""
     warnings = []
 
@@ -159,7 +144,6 @@ def parse_resume(file_bytes: bytes, filename: str) -> dict:
 
     text_lower = raw_text.lower()
 
-    # Extract each field
     skills     = _extract_skills(text_lower)
     education  = _extract_education(text_lower)
     field      = _extract_field(text_lower)
@@ -167,7 +151,6 @@ def parse_resume(file_bytes: bytes, filename: str) -> dict:
     cgpa       = _extract_cgpa(raw_text)
     experience = _extract_experience(text_lower)
 
-    # Confidence score based on how much was extracted
     filled  = sum([bool(skills), bool(education), bool(field),
                    bool(university), cgpa is not None])
     confidence = "high" if filled >= 4 else "medium" if filled >= 2 else "low"
@@ -184,19 +167,16 @@ def parse_resume(file_bytes: bytes, filename: str) -> dict:
         "university": university,
         "cgpa":       cgpa,
         "experience": experience,
-        "raw_text":   raw_text[:3000],  # Truncate for display
+        "raw_text":   raw_text[:3000],
         "confidence": confidence,
         "warnings":   warnings,
     }
 
 
-# ── Extractors ────────────────────────────────────────────────────────────────
-
 def _extract_skills(text: str) -> list:
     """Match known skills against resume text."""
     found = []
     for skill in KNOWN_SKILLS:
-        # Use word boundary matching to avoid partial matches
         pattern = r'\b' + re.escape(skill.lower()) + r'\b'
         if re.search(pattern, text):
             found.append(skill)
@@ -205,7 +185,6 @@ def _extract_skills(text: str) -> list:
 
 def _extract_education(text: str) -> str:
     """Detect highest education level."""
-    # Check in order from highest to lowest
     for level, keywords in EDUCATION_KEYWORDS.items():
         for kw in keywords:
             if kw in text:
@@ -265,17 +244,14 @@ def _extract_experience(text: str) -> int:
             if 0 <= years <= 40:
                 return years
 
-    # Estimate from work history: count distinct year mentions
     years_found = re.findall(r'\b(20[0-9]{2}|19[0-9]{2})\b', text)
     if years_found:
         years_int = [int(y) for y in years_found]
         span = max(years_int) - min(years_int)
-        return min(span, 20)  # Cap at 20
+        return min(span, 20)
 
     return 0
 
-
-# ── File extractors ───────────────────────────────────────────────────────────
 
 def _extract_pdf(file_bytes: bytes) -> tuple:
     """Extract text from PDF bytes. Returns (text, warnings)."""
@@ -291,7 +267,6 @@ def _extract_pdf(file_bytes: bytes) -> tuple:
     except ImportError:
         pass
 
-    # Fallback: pypdf
     try:
         import pypdf
         reader = pypdf.PdfReader(io.BytesIO(file_bytes))
@@ -300,7 +275,6 @@ def _extract_pdf(file_bytes: bytes) -> tuple:
     except ImportError:
         pass
 
-    # Fallback: PyPDF2
     try:
         import PyPDF2
         reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
@@ -330,7 +304,6 @@ def _extract_docx(file_bytes: bytes) -> tuple:
         return "", warnings
 
 
-# ── Skill matching helpers (used by app.py) ───────────────────────────────────
 
 ALL_TECH_SKILLS = [
     "Python", "R", "SQL", "Java", "JavaScript", "C++", "C#",
