@@ -19,11 +19,9 @@ from typing import Optional
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from src.database import get_all_jobs, get_connection
 
-# ── Paths ────────────────────────────────────────────────────────────────────
 INDEX_PATH = "data/processed/tfidf_index.pkl"
 
 
@@ -56,11 +54,10 @@ class TFIDFMatcher:
 
     def __init__(self):
         self.vectorizer: Optional[TfidfVectorizer] = None
-        self.job_matrix  = None          # Sparse TF-IDF matrix (n_jobs × n_features)
+        self.job_matrix  = None        
         self.jobs_df: Optional[pd.DataFrame] = None
         self.is_built = False
 
-    # ── Index Building ────────────────────────────────────────────────────────
 
     def build_index(self, force_rebuild: bool = False) -> "TFIDFMatcher":
         """
@@ -88,10 +85,8 @@ class TFIDFMatcher:
                 "   Run: python src/database.py --load data/raw/your_jobs.csv"
             )
 
-        # Build text corpus: concatenate title + skills + description
         corpus = self.jobs_df.apply(self._build_job_text, axis=1).tolist()
 
-        # Fit vectorizer
         self.vectorizer = TfidfVectorizer(
             max_features=500,
             ngram_range=(1, 2),     # unigrams + bigrams
@@ -101,11 +96,9 @@ class TFIDFMatcher:
         )
         self.job_matrix = self.vectorizer.fit_transform(corpus)
 
-        # Cache to disk
         os.makedirs(os.path.dirname(INDEX_PATH), exist_ok=True)
         self._save_index()
 
-        # Update DB cache table
         try:
             conn = get_connection()
             conn.execute("DELETE FROM tfidf_cache")
@@ -116,14 +109,12 @@ class TFIDFMatcher:
             conn.commit()
             conn.close()
         except Exception:
-            pass  # Non-critical
+            pass 
 
         print(f"   ✅ Index built: {len(self.jobs_df):,} jobs × "
               f"{len(self.vectorizer.vocabulary_):,} features")
         self.is_built = True
         return self
-
-    # ── Matching ──────────────────────────────────────────────────────────────
 
     def match(self, user_profile: dict, top_n: int = 20,
               min_similarity: float = 0.15) -> pd.DataFrame:
@@ -150,14 +141,11 @@ class TFIDFMatcher:
         if not self.is_built:
             self.build_index()
 
-        # Build user query text
         user_text = self._build_user_text(user_profile)
         user_vector = self.vectorizer.transform([user_text])
 
-        # Cosine similarity: user vs. all jobs
         scores = cosine_similarity(user_vector, self.job_matrix).flatten()
 
-        # Filter by minimum similarity
         valid_mask   = scores >= min_similarity
         valid_scores = scores[valid_mask]
         valid_indices = np.where(valid_mask)[0]
@@ -168,17 +156,14 @@ class TFIDFMatcher:
             top_idx   = np.argsort(scores)[::-1][:top_n]
             top_scores = scores[top_idx]
         else:
-            # Sort by score, take top_n
             sorted_order = np.argsort(valid_scores)[::-1][:top_n]
             top_idx      = valid_indices[sorted_order]
             top_scores   = valid_scores[sorted_order]
 
-        # Build results DataFrame
         results = self.jobs_df.iloc[top_idx].copy()
         results["tfidf_score"] = top_scores
-        results["job_id"]      = results["id"]  # Alias for clarity
+        results["job_id"]      = results["id"]
 
-        # Compute skill matching for each candidate
         user_skills = _parse_skills(user_profile.get("skills", ""))
         results["matched_skills"] = results["skills_required"].apply(
             lambda s: _find_matched_skills(user_skills, s)
@@ -187,12 +172,10 @@ class TFIDFMatcher:
             lambda s: _find_skill_gaps(user_skills, s)
         )
         results["match_percent"] = results["tfidf_score"].apply(
-            lambda s: min(round(s * 100, 1), 99.9)  # Scale 0-1 → 0-100
+            lambda s: min(round(s * 100, 1), 99.9)
         )
 
         return results.reset_index(drop=True)
-
-    # ── Text Builders ─────────────────────────────────────────────────────────
 
     def _build_job_text(self, row: pd.Series) -> str:
         """
@@ -201,10 +184,9 @@ class TFIDFMatcher:
         """
         title  = str(row.get("title", ""))
         skills = str(row.get("skills_required", ""))
-        desc   = str(row.get("description", ""))[:500]  # Truncate long descs
+        desc   = str(row.get("description", ""))[:500]
         industry = str(row.get("industry", ""))
 
-        # Boost title importance by repeating
         return f"{title} {title} {title} {skills} {industry} {desc}"
 
     def _build_user_text(self, profile: dict) -> str:
@@ -218,7 +200,6 @@ class TFIDFMatcher:
         interests  = str(profile.get("interests", ""))
         riasec     = str(profile.get("riasec_type", ""))
 
-        # Map RIASEC codes to keywords for better matching
         riasec_keywords = _riasec_to_keywords(riasec)
 
         return (f"{skills} {skills} "
@@ -229,8 +210,6 @@ class TFIDFMatcher:
     def _preprocess(text: str) -> str:
         """Normalize text before vectorization."""
         return _preprocess_text(text)
-
-    # ── Index Persistence ─────────────────────────────────────────────────────
 
     def _save_index(self):
         with open(INDEX_PATH, "wb") as f:
@@ -254,8 +233,6 @@ class TFIDFMatcher:
         print("🔄 Forcing TF-IDF reindex...")
         self.build_index(force_rebuild=True)
 
-
-# ── Helper Functions ──────────────────────────────────────────────────────────
 
 def _parse_skills(skills_str: str) -> set:
     """Parse comma-separated skills into a lowercase set."""
@@ -292,9 +269,6 @@ def _riasec_to_keywords(riasec: str) -> str:
             keywords.append(mapping[code])
     return " ".join(keywords)
 
-
-# ── CLI Test ──────────────────────────────────────────────────────────────────
-
 if __name__ == "__main__":
     print("=" * 60)
     print("  TF-IDF Matcher — Quick Test")
@@ -303,7 +277,6 @@ if __name__ == "__main__":
     matcher = TFIDFMatcher()
     matcher.build_index()
 
-    # Sample profile — edit to test with your own
     test_profile = {
         "skills":       "Python, SQL, Machine Learning, Pandas, Scikit-learn",
         "education":    "Bachelor of Computer Science",
