@@ -1,6 +1,5 @@
 """
 cv_enhanced_tfidf.py - CV-Trained TF-IDF Matcher
-MyCareerGPT | CV Integration 
 
 Usage:
     from src.data_mining.cv_enhanced_tfidf import CVEnhancedMatcher
@@ -61,13 +60,12 @@ class CVEnhancedMatcher:
             stop_words="english",
             preprocessor=_cv_preprocess,
         )
-        self.job_matrix    = None       # TF-IDF matrix of all jobs
+        self.job_matrix    = None      
         self.jobs_df: pd.DataFrame = None
         self.cv_count      = 0
         self.is_trained    = False
         self.vocab_size    = 0
 
-    # ── Training ──────────────────────────────────────────────────────────────
 
     def train_from_cvs(self, cv_dataset_path: str) -> "CVEnhancedMatcher":
         """
@@ -96,15 +94,12 @@ class CVEnhancedMatcher:
                     f"   Required: {required}"
                 )
 
-        # Build CV text corpus: combine all profile fields
-        # Format mirrors what users enter in the app
         cv_texts = []
         for _, row in cvs.iterrows():
             cv_text = self._build_cv_text(row)
             cv_texts.append(cv_text)
 
-        # Fit vectorizer on CV language patterns
-        # This is the key step — vocabulary is now CV-centric
+
         self.vectorizer.fit(cv_texts)
         self.cv_count   = len(cvs)
         self.vocab_size = len(self.vectorizer.vocabulary_)
@@ -112,8 +107,7 @@ class CVEnhancedMatcher:
         print(f"   ✅ Trained on {self.cv_count} CVs")
         print(f"   ✅ Vocabulary size: {self.vocab_size} terms")
 
-        # Now build job index using the CV-trained vocabulary
-        # This means job descriptions are now scored using CV skill language
+
         self.jobs_df = get_all_jobs()
         if len(self.jobs_df) == 0:
             raise ValueError("❌ No jobs in database. Load jobs first.")
@@ -122,7 +116,6 @@ class CVEnhancedMatcher:
         self.job_matrix = self.vectorizer.transform(job_corpus)
         self.is_trained = True
 
-        # Save to disk
         os.makedirs(os.path.dirname(CV_MATCHER_PATH), exist_ok=True)
         self._save()
         print(f"   💾 Saved CV-enhanced matcher to {CV_MATCHER_PATH}")
@@ -153,7 +146,6 @@ class CVEnhancedMatcher:
         user_vector = self.vectorizer.transform([user_text])
         scores      = cosine_similarity(user_vector, self.job_matrix).flatten()
 
-        # Get top_n above threshold
         valid_mask  = scores >= min_similarity
         valid_idx   = np.where(valid_mask)[0]
         valid_scores = scores[valid_mask]
@@ -184,7 +176,6 @@ class CVEnhancedMatcher:
 
         return results.reset_index(drop=True)
 
-    # ── Text Builders ─────────────────────────────────────────────────────────
 
     @staticmethod
     def _build_cv_text(row: pd.Series) -> str:
@@ -198,7 +189,6 @@ class CVEnhancedMatcher:
         exp        = str(row.get("experience_years", 0))
         job        = str(row.get("actual_job_obtained", ""))
 
-        # Include job title to teach the model: "these skills → this job"
         return f"{skills} {skills} {field} {edu} {exp} years {job}"
 
     @staticmethod
@@ -220,7 +210,6 @@ class CVEnhancedMatcher:
         interests = str(profile.get("interests", ""))
         return f"{skills} {skills} {field} {edu} {exp} years {interests}"
 
-    # ── Persistence ───────────────────────────────────────────────────────────
 
     def _save(self):
         with open(CV_MATCHER_PATH, "wb") as f:
@@ -256,7 +245,6 @@ class CVEnhancedMatcher:
         return self.train_from_cvs(cv_path)
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _parse_skills(s: str) -> set:
     return {x.strip().lower() for x in str(s).split(",") if x.strip()}
@@ -268,7 +256,6 @@ def _find_gaps(user_skills: set, job_skills_str: str) -> list:
     return sorted(_parse_skills(job_skills_str) - user_skills)
 
 
-# ── CLI Test ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import argparse
@@ -284,7 +271,6 @@ if __name__ == "__main__":
     matcher = CVEnhancedMatcher()
     matcher.train_from_cvs(args.cv)
 
-    # Test with a sample profile
     test_profile = {
         "skills":    "Python, SQL, Machine Learning, Pandas, Scikit-learn",
         "education": "Bachelor of Computer Science",
