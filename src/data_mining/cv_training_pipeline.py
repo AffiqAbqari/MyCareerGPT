@@ -1,6 +1,5 @@
 """
 cv_training_pipeline.py - Master CV Training Pipeline
-MyCareerGPT | CV Integration — Run This To Train Everything
 
 This single script runs ALL three CV training steps in order:
   Step 1: Generate/validate CV dataset
@@ -49,7 +48,6 @@ def run_pipeline(cv_path: str, run_ablation: bool = False):
     print("  🇲🇾 MyCareerGPT — CV Training Pipeline")
     print("═" * 65)
 
-    # ── Validate CV dataset ───────────────────────────────────────────────────
     print(f"\n📋 Step 0: Validating CV dataset...")
     df = pd.read_csv(cv_path)
     print(f"   Rows    : {len(df):,}")
@@ -70,7 +68,6 @@ def run_pipeline(cv_path: str, run_ablation: bool = False):
         bar = "█" * (count // 5)
         print(f"     {job:35s} {count:3d} {bar}")
 
-    # ── Step 1: CV-Enhanced TF-IDF ────────────────────────────────────────────
     print("\n" + "─" * 65)
     print("📚 Step 1: Training CV-Enhanced TF-IDF Matcher")
     print("─" * 65)
@@ -81,7 +78,6 @@ def run_pipeline(cv_path: str, run_ablation: bool = False):
 
     print(f"   ⏱  Completed in {time.time() - t1:.1f}s")
 
-    # ── Step 2: Skill Gap Predictor ───────────────────────────────────────────
     print("\n" + "─" * 65)
     print("🔍 Step 2: Training Skill Gap Predictor")
     print("─" * 65)
@@ -92,7 +88,6 @@ def run_pipeline(cv_path: str, run_ablation: bool = False):
 
     print(f"   ⏱  Completed in {time.time() - t2:.1f}s")
 
-    # ── Step 3: Career Path Predictor ─────────────────────────────────────────
     print("\n" + "─" * 65)
     print("🌲 Step 3: Training Career Path Predictor (Random Forest)")
     print("─" * 65)
@@ -103,14 +98,12 @@ def run_pipeline(cv_path: str, run_ablation: bool = False):
 
     print(f"   ⏱  Completed in {time.time() - t3:.1f}s")
 
-    # ── Step 4: Ablation Study ────────────────────────────────────────────────
     if run_ablation:
         print("\n" + "─" * 65)
         print("📊 Step 4: Ablation Study — Precision@5 Comparison")
         print("─" * 65)
         _run_ablation_comparison(cv_matcher)
 
-    # ── Step 5: Smoke Test ────────────────────────────────────────────────────
     print("\n" + "─" * 65)
     print("🧪 Step 5: Smoke Test — Sample Predictions")
     print("─" * 65)
@@ -126,13 +119,11 @@ def run_pipeline(cv_path: str, run_ablation: bool = False):
     print(f"\n👤 Test Profile: {test_profile['field']} | "
           f"Skills: {test_profile['skills'][:40]}...")
 
-    # CV-Enhanced matching
     matches = cv_matcher.match_user_to_jobs(test_profile, top_n=5)
     print(f"\n   CV-Enhanced Top 3 Matches:")
     for i, row in matches.head(3).iterrows():
         print(f"     #{i+1} {row['title']:35s} {row['match_percent']:.1f}%")
 
-    # Skill gap
     gap = gap_predictor.predict_skill_gap(
         test_profile["skills"], "Data Scientist"
     )
@@ -141,13 +132,11 @@ def run_pipeline(cv_path: str, run_ablation: bool = False):
     print(f"     Critical gaps: "
           + ", ".join(g["skill"] for g in gap["critical_gaps"][:3]))
 
-    # Career path
     career = career_predictor.predict_career_path(test_profile)
     print(f"\n   Career Path Prediction:")
     print(f"     Predicted job: {career['predicted_job']} "
           f"({career['confidence_pct']} confidence)")
 
-    # ── Summary ───────────────────────────────────────────────────────────────
     total_time = time.time() - start_total
     print("\n" + "═" * 65)
     print("  ✅ CV TRAINING PIPELINE COMPLETE")
@@ -280,7 +269,6 @@ def adapt_kaggle_dataset(kaggle_path: str,
     print(f"   Original columns: {list(df.columns)}")
     print(f"   Rows: {len(df)}")
 
-    # Kaggle resume dataset → our format
     KAGGLE_JOB_MAP = {
         "INFORMATION-TECHNOLOGY": "Software Engineer",
         "DATA-SCIENCE":            "Data Scientist",
@@ -362,7 +350,6 @@ def adapt_kaggle_dataset(kaggle_path: str,
     return output_path
 
 
-# ── CLI Entry Point ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -393,7 +380,6 @@ if __name__ == "__main__":
     os.makedirs("data/raw", exist_ok=True)
     os.makedirs("data/processed", exist_ok=True)
 
-    # Prepare CV dataset
     if args.kaggle:
         cv_path = adapt_kaggle_dataset(args.kaggle, args.cv)
     elif args.generate or not os.path.exists(args.cv):
@@ -404,7 +390,6 @@ if __name__ == "__main__":
         cv_path = args.cv
         print(f"📂 Using existing CV dataset: {cv_path}")
 
-    # Run pipeline
     success = run_pipeline(cv_path, run_ablation=args.ablation)
 
     if success:
