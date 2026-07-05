@@ -1,6 +1,5 @@
 """
-app.py - MyCareerGPT Main Application
-Streamlit UI | Weeks 4-6
+app.py - Main Application
 
 Run with: streamlit run src/app/app.py
 """
@@ -21,15 +20,13 @@ from src.rag.retrieval import RAGRetriever
 from src.llm.llm_interface import LLMInterface, check_hallucinations
 from src.resume_parser import parse_resume, split_skills, ALL_TECH_SKILLS, ALL_SOFT_SKILLS
 
-# ── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="MyCareerGPT",
+    page_title="MalaysiaCareerGPT",
     page_icon="🇲🇾",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Custom CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -84,7 +81,6 @@ p, li, span, label { color: #c8ecd4 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Session State Init ────────────────────────────────────────────────────────
 if "page" not in st.session_state:
     st.session_state.page = "profile"
 if "user_profile" not in st.session_state:
@@ -103,7 +99,6 @@ if "retriever" not in st.session_state:
 if "llm" not in st.session_state:
     st.session_state.llm = LLMInterface()
 
-# ── Sidebar Navigation ────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🇲🇾 MyCareerGPT")
     st.markdown("---")
@@ -123,7 +118,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**System:**")
     st.markdown("🔍 TF-IDF Matching")
-    st.markdown("✨ Gemini 2.5 Flash Reranking")
+    st.markdown("✨ Gemini R1 Reranking")
     st.markdown("🛡️ RAG (No Hallucinations)")
     st.markdown("🇲🇾 Malaysian Job Market")
 
@@ -155,7 +150,6 @@ def extract_resume_sections(raw_text: str) -> dict:
     lines      = raw_text.split("\n")
     text_lower = raw_text.lower()
 
-    # ── Profile ────────────────────────────────────────────────────────────
     email_match = re.search(r"[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}", raw_text)
     if email_match:
         sections["profile"]["email"] = email_match.group(0)
@@ -170,7 +164,6 @@ def extract_resume_sections(raw_text: str) -> dict:
             sections["profile"]["name"] = line
             break
 
-    # ── Skills ────────────────────────────────────────────────────────────
     from src.resume_parser import KNOWN_SKILLS, ALL_TECH_SKILLS, ALL_SOFT_SKILLS
     found_skills = []
     for skill in KNOWN_SKILLS:
@@ -183,7 +176,6 @@ def extract_resume_sections(raw_text: str) -> dict:
     sections["skills"]["soft"] = [s for s in found_skills if s.lower() in soft_lower]
     sections["skills"]["raw"]  = found_skills
 
-    # ── Experience & Projects ─────────────────────────────────────────────
     exp_pattern  = re.compile(r'(experience|employment|work history|career history)', re.IGNORECASE)
     proj_pattern = re.compile(r'(project|portfolio)', re.IGNORECASE)
 
@@ -243,7 +235,6 @@ def extract_resume_sections(raw_text: str) -> dict:
     sections["experience"] = parse_entries(exp_text_lines)
     sections["projects"]   = parse_entries(proj_text_lines)
 
-    # ── Education ─────────────────────────────────────────────────────────
     cgpa_re = re.compile(r'(?:cgpa|gpa|pointer)[:\s]+([0-9]\.[0-9]{1,2})', re.IGNORECASE)
     degree_keywords = ["bachelor", "master", "phd", "diploma", "degree",
                        "msc", "bsc", "sarjana", "sarjana muda"]
@@ -269,7 +260,7 @@ def extract_resume_sections(raw_text: str) -> dict:
 
 def generate_ats_resume(profile: dict, recs: list, llm: LLMInterface) -> str:
     """
-    Use Gemini 2.5 Flash to generate an ATS-friendly resume tailored to the
+    Use Gemini R1 to generate an ATS-friendly resume tailored to the
     top job recommendation, based on the user's profile and resume sections.
     """
     top_job     = recs[0] if recs else {}
@@ -287,6 +278,9 @@ CRITICAL RULES — YOU MUST FOLLOW THESE:
 3. The target job company ({top_job.get('company', '')}) is where they are APPLYING — NOT where they worked.
 4. Only add skills to the Skills section — never fabricate job titles or companies.
 5. Return ONLY the resume text, no preamble or explanation.
+6. SOFT SKILLS must only contain personality traits e.g. Communication, Leadership, Teamwork. NEVER put action verbs like Developed, Analyzed here.
+7. PROJECTS section — use ONLY the project information provided below. If no projects are provided, write the section header then write None.
+8. Do NOT invent or hallucinate project names, technologies, or descriptions.
 
 CANDIDATE PROFILE:
 - Name         : {profile.get('name', 'Candidate')}
@@ -330,16 +324,18 @@ TECHNICAL SKILLS
 [Comma-separated relevant skills, prioritising matched ones]
 
 SOFT SKILLS
-[Key soft skills]
+[List only personality traits: Communication, Leadership, Teamwork, Problem Solving, Critical Thinking, etc. NO action verbs.]
 
 WORK EXPERIENCE
 [Exact job title from work history] | [EXACT company from work history — do NOT use target company here] | [Duration]
-• [Achievement bullet using action verb]
-• [Achievement bullet with quantified result]
+• [Achievement bullet using action verb + quantified result]
+• [Achievement bullet using action verb + quantified result]
 
 PROJECTS
-[Project Name] | [Technologies Used]
-• [What you built and impact]
+[Use ONLY projects from this list: {projects}]
+[If projects exist: Project Name | Technologies Used]
+[Then bullet points describing what was built and its impact]
+[If no projects: write None]
 
 EDUCATION
 [Degree] in [Field]
@@ -347,16 +343,14 @@ EDUCATION
 """
 
     try:
-        result = llm.generate_recommendations(prompt, max_tokens=10000, temperature=0.4)
+        result = llm.generate_recommendations(prompt, max_tokens=4000, temperature=0.4)
         raw = result.get("raw_text", "")
-        # Strip any RECOMMENDATION blocks if the parser ran on it
         if "RECOMMENDATION" in raw:
             raw = raw.split("RECOMMENDATION")[0].strip()
-        # Strip markdown formatting Gemini sometimes adds
         import re as _re
-        raw = _re.sub(r"\*\*(.*?)\*\*", r"", raw)   # Remove **bold**
-        raw = _re.sub(r"\*(.*?)\*",   r"", raw)         # Remove *italic*
-        raw = _re.sub(r"^#+\s+", "", raw, flags=_re.MULTILINE) # Remove # headers
+        raw = _re.sub(r"\*\*(.*?)\*\*", r"", raw)   
+        raw = _re.sub(r"\*(.*?)\*",   r"", raw)        
+        raw = _re.sub(r"^#+\s+", "", raw, flags=_re.MULTILINE)
         raw = raw.strip()
         return raw if raw else "❌ Could not generate resume. Please try again."
     except Exception as e:
@@ -395,7 +389,6 @@ def _build_ats_resume_pdf(resume_text: str, name: str) -> bytes:
     lines = resume_text.strip().split("\n")
     i = 0
 
-    # Section header keywords
     SECTIONS = {"PROFESSIONAL SUMMARY", "TECHNICAL SKILLS", "SOFT SKILLS",
                 "WORK EXPERIENCE", "PROJECTS", "EDUCATION", "SKILLS",
                 "EXPERIENCE", "CERTIFICATIONS"}
@@ -407,7 +400,6 @@ def _build_ats_resume_pdf(resume_text: str, name: str) -> bytes:
             i += 1
             continue
 
-        # First non-empty line = name
         if i == 0 or (i <= 2 and not any(s in line.upper() for s in SECTIONS)):
             if i == 0:
                 story.append(Paragraph(line, name_style))
@@ -416,7 +408,6 @@ def _build_ats_resume_pdf(resume_text: str, name: str) -> bytes:
             i += 1
             continue
 
-        # Section headers
         if any(line.upper().startswith(s) for s in SECTIONS):
             story.append(HRFlowable(width="100%", thickness=0.5,
                                     color=colors.HexColor("#08A045")))
@@ -424,14 +415,12 @@ def _build_ats_resume_pdf(resume_text: str, name: str) -> bytes:
             i += 1
             continue
 
-        # Bullet points
         if line.startswith("•") or line.startswith("-"):
             clean = line.lstrip("•- ").strip()
             story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;• {clean}", body_style))
             i += 1
             continue
 
-        # Regular text
         story.append(Paragraph(line, body_style))
         i += 1
 
@@ -489,8 +478,7 @@ def _build_recommendations_pdf(profile: dict, recs: list) -> bytes:
 
     story = []
 
-    # Header
-    story.append(Paragraph("MyCareerGPT — Career Recommendations", title_style))
+    story.append(Paragraph("MalaysiaCareerGPT — Career Recommendations", title_style))
     story.append(Paragraph(
         f"Generated for {profile.get('name','Candidate')} on {time.strftime('%d %b %Y, %H:%M')}",
         subtitle_style,
@@ -498,7 +486,6 @@ def _build_recommendations_pdf(profile: dict, recs: list) -> bytes:
     story.append(HRFlowable(width="100%", thickness=2, color=GREEN_DARK))
     story.append(Spacer(1, 0.3*cm))
 
-    # Profile table
     story.append(Paragraph("Candidate Profile", section_style))
     story.append(Spacer(1, 0.2*cm))
     profile_data = [
@@ -526,7 +513,6 @@ def _build_recommendations_pdf(profile: dict, recs: list) -> bytes:
     story.append(pt)
     story.append(Spacer(1, 0.4*cm))
 
-    # Recommendations
     story.append(Paragraph("Your Top Job Matches", section_style))
     for i, rec in enumerate(recs, 1):
         story.append(Spacer(1, 0.3*cm))
@@ -565,12 +551,11 @@ def _build_recommendations_pdf(profile: dict, recs: list) -> bytes:
         if i < len(recs):
             story.append(HRFlowable(width="100%", thickness=0.5, color=GREEN_LIGHT))
 
-    # Footer
     story.append(Spacer(1, 0.5*cm))
     story.append(HRFlowable(width="100%", thickness=1.5, color=GREEN_DARK))
     story.append(Spacer(1, 0.2*cm))
     story.append(Paragraph(
-        "Generated by MyCareerGPT | TF-IDF + Gemini 2.5 Flash | FYP02-DS-T2610-0382",
+        "Generated by MalaysiaCareerGPT | TF-IDF + Gemini R1 | FYP02-DS-T2610-0382",
         small_style,
     ))
 
@@ -591,7 +576,6 @@ def show_profile_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Resume Upload ──────────────────────────────────────────────────────
     st.subheader("📄 Upload Resume (Optional)")
     st.caption("Supported formats: PDF, DOCX — your details will be auto-filled below")
 
@@ -635,7 +619,6 @@ def show_profile_page():
         for w in parsed.get("warnings", []):
             st.warning(w)
 
-        # ── Extracted Sections Tabs ────────────────────────────────────────
         with st.expander("📋 View Extracted Resume Sections", expanded=False):
             tabs = st.tabs(["👤 Profile", "💡 Skills", "💼 Experience & Projects", "🎓 Education"])
 
@@ -700,7 +683,6 @@ def show_profile_page():
 
     st.markdown("---")
 
-    # ── Pre-fill helpers ───────────────────────────────────────────────────
     def _default(key, fallback):
         if parsed and parsed.get(key):
             return parsed[key]
@@ -712,7 +694,6 @@ def show_profile_page():
         parsed_lower = {s.lower() for s in parsed_skills}
         return [s for s in skill_list if s.lower() in parsed_lower]
 
-    # ── Form ───────────────────────────────────────────────────────────────
     with st.form("profile_form"):
         st.subheader("📋 Personal Information")
         col1, col2 = st.columns(2)
@@ -802,7 +783,6 @@ def show_profile_page():
         else:
             extra = []
 
-        # Show detected experience summary
         sections     = st.session_state.resume_sections
         exp_entries  = sections.get("experience", [])
         proj_entries = sections.get("projects", [])
@@ -881,8 +861,23 @@ def show_profile_page():
 
         riasec_str  = "".join(selected_riasec[:3]) or "IRA"
         sections    = st.session_state.resume_sections
-        exp_context = " | ".join(e.get("header","") for e in sections.get("experience",[])[:3])
-        proj_context= " | ".join(e.get("header","") for e in sections.get("projects",[])[:2])
+
+        exp_parts = []
+        for e in sections.get("experience", [])[:3]:
+            hdr  = e.get("header", "")
+            desc = e.get("description", "")[:150]
+            exp_parts.append(f"{hdr}: {desc}" if desc else hdr)
+        exp_context = " || ".join(exp_parts)
+
+        proj_parts = []
+        for e in sections.get("projects", [])[:3]:
+            hdr  = e.get("header", "")
+            desc = e.get("description", "")[:200]
+            proj_parts.append(f"{hdr}: {desc}" if desc else hdr)
+        proj_context = " || ".join(proj_parts)
+
+        if not proj_context:
+            proj_context = "No projects detected from resume — leave Projects section empty"
 
         profile = {
             "name":         name,
@@ -928,7 +923,7 @@ def show_recommendations_page():
     st.markdown(f"""
     <div class="main-header">
         <h1>🎯 Your Career Recommendations</h1>
-        <p>Matched from Malaysian jobs using TF-IDF + Gemini 2.5 Flash</p>
+        <p>Matched from Malaysian jobs using TF-IDF + Gemini R1</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -978,7 +973,7 @@ def show_recommendations_page():
                     if "memory" in err.lower() or "ram" in err.lower():
                         st.error("❌ Not enough RAM for LLM. Showing TF-IDF results instead.")
                     elif "connect" in err.lower() or "refused" in err.lower():
-                        st.error("❌ Cannot connect to Gemini 2.5 Flash.\n\n**Fix:** Check Docker is running: docker compose up -d")
+                        st.error("❌ Cannot connect to Gemini.\n\n**Fix:** Check Docker is running: docker compose up -d")
                     else:
                         st.warning(f"⚠️ LLM error: {err}\n\nShowing TF-IDF results instead.")
 
@@ -1020,15 +1015,20 @@ def show_recommendations_page():
             st.session_state.recommendations = recs
 
             try:
-                # Capture the user_id returned directly from save_user
-                user_id = save_user(
+                save_user(
                     profile.get("name"), profile.get("email"),
                     profile.get("education"), profile.get("field"),
                     profile.get("university"), profile.get("cgpa"),
                     profile.get("skills"), profile.get("experience"),
                     profile.get("riasec_type"),
                 )
-                
+                from src.database import get_connection
+                conn   = get_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM users WHERE email = ?", (profile.get("email"),))
+                row     = cursor.fetchone()
+                user_id = row[0] if row else None
+                conn.close()
                 if user_id:
                     save_recommendations(user_id, [
                         {
@@ -1049,7 +1049,6 @@ def show_recommendations_page():
             st.session_state.inference_time = inference_time
             st.session_state.hall_check     = hall_check
 
-        # ── Metrics ───────────────────────────────────────────────────────
         recs       = st.session_state.recommendations
         inf_time   = st.session_state.get("inference_time", 0)
         hall_check = st.session_state.get("hall_check", {})
@@ -1073,7 +1072,6 @@ def show_recommendations_page():
 
         st.markdown("---")
 
-        # ── Download PDF ───────────────────────────────────────────────────
         if recs:
             try:
                 pdf_bytes = _build_recommendations_pdf(profile, recs)
@@ -1132,7 +1130,6 @@ def show_recommendations_page():
                     if rec.get("tfidf_score"):
                         st.markdown(f"**TF-IDF Score:** `{rec['tfidf_score']:.4f}`")
 
-        # ── Skill Gap Analysis ─────────────────────────────────────────────
         st.markdown("---")
         st.subheader("📉 Your Skill Gap Analysis")
         all_gaps = []
@@ -1150,7 +1147,6 @@ def show_recommendations_page():
         else:
             st.success("🎉 No skill gaps identified across your recommendations!")
 
-        # ── Prompt to generate ATS resume ─────────────────────────────────
         st.markdown("---")
         st.info("📄 **Want an ATS-optimised resume?** Head to the **My ATS Resume** page "
                 "to generate a tailored resume based on your top job match.")
@@ -1176,7 +1172,7 @@ def show_ats_resume_page():
     st.markdown("""
     <div class="main-header">
         <h1>📄 ATS-Friendly Resume Generator</h1>
-        <p>Generate an optimised resume tailored to your top job match using Gemini 2.5 Flash AI</p>
+        <p>Generate an optimised resume tailored to your top job match using Gemini AI</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1300,7 +1296,7 @@ def show_feedback_page():
     st.markdown("""
     <div class="main-header">
         <h1>💬 Your Feedback</h1>
-        <p>Help us improve MyCareerGPT — your opinion matters!</p>
+        <p>Help us improve MalaysiaCareerGPT — your opinion matters!</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1343,7 +1339,7 @@ def show_feedback_page():
             height=120,
         )
         would_recommend = st.checkbox(
-            "✅ I would recommend MyCareerGPT to other students / job seekers",
+            "✅ I would recommend MalaysiaCareerGPT to other students / job seekers",
             value=True,
         )
 
@@ -1383,7 +1379,7 @@ def show_feedback_page():
             (sus_map[sus_q1] - 1) + (5 - sus_map[sus_q2]) +
             (sus_map[sus_q3] - 1) + (sus_map[sus_q4] - 1) +
             (5 - sus_map[sus_q5])
-        ) * 2.5
+        ) * 5  # 5-question SUS: multiply by 5 (not 2.5 which is for 10 questions)
 
         full_comments = (
             f"{comments}\n\n"
@@ -1409,7 +1405,6 @@ def show_feedback_page():
             st.error(f"Could not save feedback: {e}")
 
 
-# ── Helper ────────────────────────────────────────────────────────────────────
 def _candidates_to_recs(candidates):
     """Convert TF-IDF candidates to recommendation format (no LLM)."""
     profile     = st.session_state.user_profile
@@ -1438,7 +1433,6 @@ def _candidates_to_recs(candidates):
     return results
 
 
-# ── Router ────────────────────────────────────────────────────────────────────
 def main():
     page = st.session_state.page
     if page == "profile":
