@@ -75,7 +75,6 @@ class RAGRetriever:
         else:
             print("ℹ️  Career path predictor not trained yet")
 
-    # ── Core Methods ──────────────────────────────────────────────────────────
     def retrieve(self, user_profile: dict, top_n: int = 20) -> list:
         """Retrieve top-N candidate jobs enriched with skill gap data."""
         if self.using_cv_enhanced:
@@ -85,10 +84,6 @@ class RAGRetriever:
 
         candidates = results_df.to_dict(orient="records")
 
-        # ── FIX 2: Realistic match_percent ────────────────────────────────────
-        # Raw TF-IDF cosine similarity clusters near 95-100% for similar docs,
-        # which is misleading. We rescale it to a more meaningful 0-100% range
-        # using skill overlap as the primary signal.
         user_skills = [
             s.strip().lower()
             for s in user_profile.get("skills", "").split(",")
@@ -100,29 +95,18 @@ class RAGRetriever:
             required     = [s.strip().lower() for s in required_str.split(",") if s.strip()]
 
             if required and user_skills:
-                # Skill overlap ratio (Jaccard-style)
                 matched_count  = sum(1 for r in required if any(r in u or u in r for u in user_skills))
                 skill_overlap  = matched_count / len(required)
 
-                # Raw TF-IDF score (already normalised 0-1)
                 raw_tfidf = candidate.get("cv_tfidf_score") or candidate.get("tfidf_score") or 0
 
-                # ── Blended score: 60% skill overlap + 40% TF-IDF ─────────────
-                # This gives a much more realistic percentage:
-                # - Perfect skill match + high TF-IDF = ~85-95%
-                # - Partial skill match                = ~50-75%
-                # - Low match                          = ~20-40%
                 blended = (0.60 * skill_overlap + 0.40 * float(raw_tfidf)) * 100
 
-                # Apply a confidence penalty based on LLM later —
-                # for now cap at 95% (100% should never happen in practice)
                 candidate["match_percent"] = min(round(blended, 1), 95.0)
             else:
-                # No skills data — use a reduced TF-IDF score
                 raw_tfidf = candidate.get("cv_tfidf_score") or candidate.get("tfidf_score") or 0
                 candidate["match_percent"] = min(round(float(raw_tfidf) * 70, 1), 70.0)
 
-            # Populate matched/gap skills
             if required and user_skills:
                 matched = [
                     r for r in (candidate.get("skills_required", "") or "").split(",")
@@ -141,7 +125,6 @@ class RAGRetriever:
                 candidate["matched_skills"] = [m.strip() for m in matched[:8]]
                 candidate["skill_gaps"]     = [g.strip() for g in gaps[:6]]
 
-        # Enrich with data-driven skill gap predictor if available
         if self.gap_predictor:
             for candidate in candidates:
                 gap_result = self.gap_predictor.predict_skill_gap(
@@ -190,7 +173,6 @@ class RAGRetriever:
                 f"({career_pred.get('confidence_pct','N/A')} confidence)"
             )
 
-        # Build numbered job list — makes it easier for LLM to reference
         jobs_context = ""
         for i, job in enumerate(candidates[:10], 1):
             gaps     = (job.get("data_driven_gaps") or job.get("skill_gaps", []))[:5]
